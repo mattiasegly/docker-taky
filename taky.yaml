@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:latest
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "debug"]
+    volumes:
+      - taky_redis:/data
+    networks:
+      - taky_network
+    deploy:
+      mode: replicated
+      replicas: 1
+
+  cot:
+    image: mattiasegly/taky:latest
+    command: ["taky", "-d", "-c", "/home/taky/taky.conf", "-l", "debug"]
+    environment:
+      PUBLIC_IP: '123.456.789.10'
+    ports:
+      - target: 8088
+        published: 8088
+        protocol: tcp
+        mode: ingress
+      - target: 8089
+        published: 8089
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - taky_data:/home/taky
+    networks:
+      - taky_network
+    deploy:
+      mode: replicated
+      replicas: 1
+    depends_on:
+      - redis
+
+  dps:
+    image: mattiasegly/taky:latest
+    command: ["taky_dps", "-c", "/home/taky/taky.conf", "-l", "debug"]
+    ports:
+      - target: 8443
+        published: 8443
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - taky_data:/home/taky
+    networks:
+      - taky_network
+    deploy:
+      mode: replicated
+      replicas: 1
+    depends_on:
+      - cot
+
+networks:
+  taky_network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  taky_redis:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /var/Docker/taky/redis
+  taky_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /var/Docker/taky/data
