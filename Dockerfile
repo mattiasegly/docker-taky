@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	git \
 	pipx \
 && rm -rf /var/lib/apt/lists/*
-#packages needed to compile on arm
+#packages needed to build on arm
 
 RUN groupadd taky && \
 	useradd -mg taky taky
@@ -23,7 +23,8 @@ WORKDIR /home/taky
 ENV PATH="$PATH:/home/taky/.local/bin"
 
 RUN mkdir -p uploads/meta clients logs && \
-	pipx install git+https://github.com/tkuester/taky@next
+	pipx install git+https://github.com/tkuester/taky@next --system-site-packages
+#access needed to find build requirements
 
 FROM mattiasegly/base-image:${SOURCE_BRANCH}-${ARCH}
 
@@ -36,9 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /usr/local/bin
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-RUN groupadd taky && \
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+	groupadd taky && \
 	useradd -mg taky taky
 
 USER taky
