@@ -1,21 +1,21 @@
 ARG ARCH=
 ARG SOURCE_BRANCH=
-FROM mattiasegly/base-image:${SOURCE_BRANCH}-${ARCH}
-
-COPY entrypoint.sh /usr/local/bin
-RUN chmod +x /usr/local/bin/entrypoint.sh
+FROM mattiasegly/base-image:${SOURCE_BRANCH}-${ARCH} AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+	build-essential \
+	libxml2-dev \
+	libxslt1-dev \
+	libffi-dev \
+	libssl-dev \
+	python3-dev \
+	cargo \
 	git \
-	python3 \
-	python3-pip \
-	python3-lxml \
-	python3-cryptography \
+	pipx \
 && rm -rf /var/lib/apt/lists/*
-#problem compiling some python packages prom pypi on arm
+#packages needed to compile on arm
 
-RUN pip3 install --upgrade pip && \
-	groupadd taky && \
+RUN groupadd taky && \
 	useradd -mg taky taky
 
 USER taky
@@ -23,10 +23,32 @@ WORKDIR /home/taky
 ENV PATH="$PATH:/home/taky/.local/bin"
 
 RUN mkdir -p uploads/meta clients logs && \
-	pip3 install --user git+https://github.com/tkuester/taky@next
+	pipx install git+https://github.com/tkuester/taky@next
+
+FROM mattiasegly/base-image:${SOURCE_BRANCH}-${ARCH}
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	libxml2 \
+	libxslt1.1 \
+	libffi8 \
+	libssl3 \
+	pipx \
+&& rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+RUN groupadd taky && \
+	useradd -mg taky taky
+
+USER taky
+WORKDIR /home/taky
+ENV PATH="$PATH:/home/taky/.local/bin"
+
+COPY --from=builder /home/taky /home/taky
 
 VOLUME /home/taky
 EXPOSE 8088 8089 8443
 
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["echo", "CommandMissing"]
+CMD ["echo", "Specify", "Command"]
