@@ -50,7 +50,7 @@ services:
       - taky_network
     deploy:
       mode: replicated
-      replicas: 1
+      replicas: 0
     depends_on:
       - cot
 
