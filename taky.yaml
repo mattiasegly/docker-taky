@@ -3,7 +3,6 @@ version: "3.8"
 services:
   redis:
     image: redis:latest
-    command: ["redis-server", "--save", "60", "1", "--loglevel", "debug"]
     volumes:
       - taky_redis:/data
     networks:
@@ -14,9 +13,10 @@ services:
 
   cot:
     image: mattiasegly/taky:latest
-    command: ["taky", "-d", "-c", "/home/taky/taky.conf", "-l", "debug"]
     environment:
-      PUBLIC_IP: '123.456.789.10'
+      TAKY_MODE: 'cot'
+      TAKY_FQDN: 'taky.domain.tld'
+      TAKY_IP: '123.456.789.10'
     ports:
       - target: 8088
         published: 8088
@@ -27,7 +27,7 @@ services:
         protocol: tcp
         mode: ingress
     volumes:
-      - taky_data:/home/taky
+      - taky_data:/taky
     networks:
       - taky_network
     deploy:
@@ -38,20 +38,24 @@ services:
 
   dps:
     image: mattiasegly/taky:latest
-    command: ["taky_dps", "-c", "/home/taky/taky.conf", "-l", "debug"]
+    environment:
+      TAKY_MODE: 'dps'
+      TAKY_FQDN: 'taky.domain.tld'
+      TAKY_IP: '123.456.789.10'
     ports:
       - target: 8443
         published: 8443
         protocol: tcp
         mode: ingress
     volumes:
-      - taky_data:/home/taky
+      - taky_data:/taky
     networks:
       - taky_network
     deploy:
       mode: replicated
-      replicas: 0
+      replicas: 1
     depends_on:
+      - redis
       - cot
 
 networks:
