@@ -1,47 +1,68 @@
 #!/bin/bash
 
-echo "Generate config, CA, and certs if config doesn't exist..."
-if [ ! -f /home/taky/taky.conf ]; then
-takyctl setup --host taky --public-ip $PUBLIC_IP --user taky /tmp/taky #because taky won't create files in a folder that exists
-mv /tmp/taky/* /home/taky
-rm -r /home/taky/dp-user
+echo "Checking if config exists..."
+if [ ! -f /taky/taky.conf ]; then
+echo "No config found..."
 
-cat > /home/taky/taky.conf << EOF
+echo "Checking TAKY_MODE variable..."
+if [ ! $TAKY_MODE = cot ]; then
+echo "Only TAKY_MODE=cot is allowed to create config to prevent duplicates and conflicts..."
+
+else
+echo "Checking if variables exists..."
+if [ -z "$TAKY_FQDN" ] || [ -z "$TAKY_IP" ]; then
+echo "Missing variables TAKY_FQDN or TAKY_IP, set environment variables and restart..."
+
+else
+echo "Creating config, CA and certs..."
+takyctl setup --host $TAKY_FQDN --public-ip $TAKY_IP --p12_pw ClearTextFTW --user taky /tmp/taky #because taky won't create files in a folder that exists
+mv /tmp/taky/* /taky
+
+cat > /taky/taky.conf << EOF
 [taky]
-hostname = taky
+hostname = $TAKY_FQDN
 node_id = TAKY
 bind_ip = 0.0.0.0
-public_ip = $PUBLIC_IP
+public_ip = $TAKY_IP
 redis = redis://taky_redis:6379
-root_dir = /home/taky
+root_dir = /taky
 
 [cot_server]
 port = 8089
 mon_port = 8088
-cot_log = true
-log_cot = /home/taky/logs
 max_persist_ttl = -1
 
 [dp_server]
-upload_path = /home/taky/uploads
+upload_path = /taky/dp-user
 
 [ssl]
 enabled = true
 client_cert_required = true
-ca = /home/taky/ssl/ca.crt
-ca_key = /home/taky/ssl/ca.key
-server_p12 = /home/taky/ssl/server.p12
-server_p12_pw = atakatak
-cert = /home/taky/ssl/server.crt
-key = /home/taky/ssl/server.key
-cert_db = /home/taky/ssl/cert-db.txt
+ca = /taky/ssl/ca.crt
+ca_key = /taky/ssl/ca.key
+server_p12 = /taky/ssl/server.p12
+server_p12_pw = ClearTextFTW
+cert = /taky/ssl/server.crt
+key = /taky/ssl/server.key
+cert_db = /taky/ssl/cert-db.txt
 EOF
 
-echo "Build client example files..."
+echo "Building client example files..."
 takyctl build_client atak1
+takyctl build_client atak2
 takyctl build_client --is_itak itak1
-mv *.zip clients
+takyctl build_client --is_itak itak2
+mkdir /taky/examples
+mv *.zip /taky/examples
+
+echo "Config created..."
 fi
 
-echo "Finished! Run container."
+echo ""
+fi
+
+else
+echo "Config found..."
+fi
+
 exec "$@"
