@@ -3,12 +3,15 @@
 DOCKER_REPO=mattiasegly/taky
 SOURCE_BRANCH=bookworm
 
+#Setup multiarch builds
+docker pull multiarch/qemu-user-static:latest
+docker run --rm --privileged multiarch/qemu-user-static:latest --reset -p yes
+
 #Remove old images
 for ARCH in amd64 i386 arm32v6 arm32v7 arm64v8
 do
 docker image rm $DOCKER_REPO:$SOURCE_BRANCH-$ARCH
 done
-
 docker image prune -f
 
 #Pull base images
@@ -17,14 +20,14 @@ do
 docker pull mattiasegly/base-image:$SOURCE_BRANCH-$ARCH
 done
 
-#Build and push images
+#Build and push
 for ARCH in amd64 i386 arm32v6 arm32v7 arm64v8
 do
 docker build --no-cache -f Dockerfile -t $DOCKER_REPO:$SOURCE_BRANCH-$ARCH --build-arg ARCH=$ARCH --build-arg SOURCE_BRANCH=$SOURCE_BRANCH .
 docker push $DOCKER_REPO:$SOURCE_BRANCH-$ARCH
 done
 
-#Create branch tag
+#Release specific tag
 docker manifest create \
 	$DOCKER_REPO:$SOURCE_BRANCH \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-amd64 \
@@ -32,11 +35,10 @@ docker manifest create \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-arm32v6 \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-arm32v7 \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-arm64v8
-
 docker manifest push --purge \
 	$DOCKER_REPO:$SOURCE_BRANCH
 
-#Create "latest" tag
+#Default "latest" tag
 docker manifest create \
 	$DOCKER_REPO:latest \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-amd64 \
@@ -44,7 +46,6 @@ docker manifest create \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-arm32v6 \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-arm32v7 \
 	--amend $DOCKER_REPO:$SOURCE_BRANCH-arm64v8
-
 docker manifest push --purge \
 	$DOCKER_REPO:latest
 
@@ -53,5 +54,4 @@ for ARCH in amd64 i386 arm32v6 arm32v7 arm64v8
 do
 docker image rm $DOCKER_REPO:$SOURCE_BRANCH-$ARCH
 done
-
 docker image prune -f
