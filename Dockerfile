@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	cargo \
 	git \
 	pipx \
+	pkg-config \
 && rm -rf /var/lib/apt/lists/*
 #packages needed to build on arm
 
